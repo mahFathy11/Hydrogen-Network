@@ -239,7 +239,7 @@ html[dir="ltr"] .introjs-tooltip { direction: ltr !important; text-align: left !
 @media (max-width: 480px) { .status-item span.hide-mobile { display: none; } .titlebar-actions { gap: 6px; } .tb-sep { margin: 0 4px; } .tab { padding: 0 12px; font-size: 12px; } }
 
 /* PDF / Print Container */
-#print-container { display: none; background: white; color: black; padding: 40px; font-family: 'Cairo', sans-serif; width: 800px; margin: 0 auto; box-sizing: border-box; }
+#print-container { display: none; background: white; color: black; padding: 40px; font-family: 'Cairo', sans-serif; width: 800px; position: absolute; top: 0; left: 0; box-sizing: border-box; }
 html[dir="rtl"] #print-container { direction: rtl; text-align: right;}
 html[dir="ltr"] #print-container { direction: ltr; text-align: left;}
 @media print {
