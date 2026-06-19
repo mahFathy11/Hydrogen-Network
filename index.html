@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+
+<!--
+  =========================================================
+  * Project: H2 Pinch Analyzer - Hydrogen Network Optimizer
+  * Team: Free Palestene
+  * Developers: Mahmoud Fathy, Soliman Atallah, and Team
+  * Institution: Suez University - Faculty of Petroleum and Mining Engineering
+  * Year: 2026
+  * Copyright © 2026. All rights reserved.
+  =========================================================
+-->
+
+<html lang="en" dir="ltr">
+
+<head>
+    <meta name="author" content="Free Palestene Team">
+    <meta name="copyright" content="Free Palestene Team, Suez University">
+    <meta name="description"
+        content="Hydrogen Network Optimizer developed by Free Palestene Team at Suez University. Optimize your H2 distribution network with our advanced pinch analysis tool.">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>H2 Pinch Analysis — Hydrogen Network Optimizer</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/introjs.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intro.js/7.2.0/intro.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <div id="app-wrapper">
+        <div id="toast-container"></div>
+
+        <div id="excelModal" class="modal-overlay no-print">
+            <div class="modal-box">
+                <div class="modal-header">
+                    <span class="modal-title"><i class="fa-solid fa-file-excel" style="color:var(--green)"></i>
+                        &nbsp;<span data-i18n="excel_title">Quick Import from Excel</span></span>
+                    <button class="modal-close" onclick="closeModal('excelModal')"><i
+                            class="fa-solid fa-xmark"></i></button>
+                </div>
+                <p style="font-size:13px; color:var(--text-2); margin-bottom:12px; font-weight:600;"><span
+                        data-i18n="excel_desc">Copy data from Excel (Ctrl+C) and paste it here (Ctrl+V) — Required
+                        order:</span> <br><span
+                        style="color:var(--accent-hi); background:rgba(59,130,246,0.1); padding:2px 6px; border-radius:4px; display:inline-block; margin-top:6px; font-family:'Consolas', monospace; font-size: 12px;"
+                        data-i18n="excel_format">Name | Flow | Impurity% | Pressure bar</span></p>
+                <textarea class="modal-textarea" id="excelPasteArea" data-i18n-placeholder="excel_placeholder"
+                    placeholder="Paste Excel data here..."></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                    <button class="btn-sm" onclick="closeModal('excelModal')" data-i18n="btn_cancel">Cancel</button>
+                    <button class="btn-sm add" id="btnConfirmPaste" style="padding: 8px 16px;"><i
+                            class="fa-solid fa-check"></i> <span data-i18n="btn_import">Import Data</span></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="metaModal" class="modal-overlay no-print">
+            <div class="modal-box" style="max-width: 500px;">
+                <div class="modal-header">
+                    <span class="modal-title"><i class="fa-solid fa-address-card" style="color:var(--purple)"></i>
+                        &nbsp;<span data-i18n="meta_title">Project Details</span></span>
+                    <button class="modal-close" onclick="closeModal('metaModal')"><i
+                            class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="layout-grid" style="grid-template-columns: 1fr; gap: 12px;">
+                    <div class="form-row"><span class="form-label" data-i18n="meta_proj_name">Project Name</span><input
+                            type="text" id="meta_projectName" class="eng-input" data-i18n-placeholder="meta_proj_ph"
+                            placeholder="e.g. H2 Network Optimization 2024"></div>
+                    <div class="form-row"><span class="form-label" data-i18n="meta_comp_name">Company / Refinery
+                            Name</span><input type="text" id="meta_companyName" class="eng-input"
+                            data-i18n-placeholder="meta_comp_ph" placeholder="e.g. Alexandria Petroleum Co."></div>
+                    <div class="form-row"><span class="form-label" data-i18n="meta_eng_name">Engineer Name</span><input
+                            type="text" id="meta_engineerName" class="eng-input" data-i18n-placeholder="meta_eng_ph"
+                            placeholder="e.g. Eng. Ahmed"></div>
+                    <div class="form-row" style="margin-top: 8px;"><span class="form-label" data-i18n="meta_notes">Notes
+                            / Conclusions</span><textarea id="meta_notes" class="eng-input"
+                            style="height: 80px; resize: vertical;" data-i18n-placeholder="meta_notes_ph"
+                            placeholder="Write any notes or recommendations..."></textarea></div>
+                    <div class="form-row" style="margin-top: 8px;">
+                        <span class="form-label" data-i18n="meta_logo">Company Logo</span>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" id="meta_logo_input"
+                                accept="image/png, image/jpeg, image/jpg, image/svg+xml" style="display:none;"
+                                onchange="handleLogoUpload(event)">
+                            <button class="btn-sm" onclick="document.getElementById('meta_logo_input').click()"><i
+                                    class="fa-solid fa-upload"></i> <span data-i18n="btn_choose_img">Choose
+                                    Image</span></button>
+                            <button class="btn-sm del" onclick="removeLogo()" id="btn_remove_logo" style="display:none;"
+                                data-i18n-title="btn_delete_logo" title="Delete Logo"><i
+                                    class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div id="logo_preview_container"
+                            style="margin-top: 10px; display: none; width: 120px; height: 120px; border: 1px dashed var(--border-hi); border-radius: 8px; overflow: hidden; align-items: center; justify-content: center; background: rgba(255,255,255,0.05);">
+                            <img id="logo_preview_img" src=""
+                                style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button class="btn-sm" onclick="closeModal('metaModal')" data-i18n="btn_cancel">Cancel</button>
+                    <button class="btn-sm add" onclick="saveMetaModal()"
+                        style="padding: 8px 16px; background: var(--purple); color: white; border-color: var(--purple);"><i
+                            class="fa-solid fa-check"></i> <span data-i18n="btn_save_data">Save Details</span></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="titlebar">
+            <div class="titlebar-brand" id="tour-step-1">
+                <div class="brand-icon"><i class="fa-solid fa-code-branch"></i></div>
+                <span class="brand-name">H2 Pinch Analyzer</span>
+                <span class="brand-ver">PRO v3.6.0</span>
+            </div>
+            <div class="titlebar-actions" id="tour-step-6">
+                <button class="tb-btn tour" onclick="startTour()" data-i18n-title="title_tour" title="Restart Tour"><i
+                        class="fa-solid fa-circle-question"></i></button>
+                <div class="tb-sep"></div>
+
+                <!-- Language Selector -->
+                <div class="tb-selector">
+                    <label><i class="fa-solid fa-language"
+                            style="color:var(--accent); margin-inline-start:4px; margin-inline-end:4px;"></i></label>
+                    <select id="langSelector" class="lang-select" onchange="setLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="ar">العربية (Arabic)</option>
+                    </select>
+                </div>
+
+                <div class="tb-selector">
+                    <label><i class="fa-solid fa-palette"
+                            style="color:var(--accent); margin-inline-start:4px; margin-inline-end:4px;"></i></label>
+                    <select id="themeSelector" class="theme-select" onchange="changeTheme(this.value)">
+                        <option value="dark" data-i18n="theme_dark">Dark</option>
+                        <option value="light" data-i18n="theme_light">Light (Industrial)</option>
+                        <option value="green" data-i18n="theme_green">Clean Energy</option>
+                        <option value="corporate" data-i18n="theme_corp">Corporate</option>
+                    </select>
+                </div>
+                <div class="tb-selector">
+                    <label><i class="fa-solid fa-scale-balanced"
+                            style="color:var(--accent); margin-inline-start:4px; margin-inline-end:4px;"></i></label>
+                    <select id="unitSelector" class="unit-select" onchange="handleUnitChange(this.value)">
+                        <option value="Kgmol/hr">Kgmol/hr</option>
+                        <option value="MMSCFD">MMSCFD</option>
+                        <option value="Nm3/hr">Nm³/hr</option>
+                        <option value="kg/hr">kg/hr</option>
+                    </select>
+                </div>
+                <div class="tb-sep"></div>
+                <button class="tb-btn info" onclick="openMetaModal()" data-i18n-title="title_meta"
+                    title="Project Details"><i class="fa-solid fa-address-card"></i></button>
+                <button class="tb-btn danger" onclick="clearAllData()" data-i18n-title="title_new"
+                    title="New Project"><i class="fa-solid fa-file-circle-plus"></i></button>
+                <button class="tb-btn" onclick="triggerLoadProject()" data-i18n-title="title_open"
+                    title="Open Project (JSON)"><i class="fa-solid fa-folder-open"></i></button>
+                <input type="file" id="fileInput" accept=".json" class="hidden" onchange="loadProject(event)"
+                    style="display:none">
+                <button class="tb-btn primary" onclick="saveProject()" data-i18n-title="title_save"
+                    title="Save Project"><i class="fa-solid fa-save"></i> <span
+                        data-i18n="btn_save">Save</span></button>
+                <div class="tb-sep"></div>
+                <button class="tb-btn" onclick="handlePrintAction()" data-i18n-title="title_print"
+                    title="Print Report"><i class="fa-solid fa-print"></i></button>
+                <button class="tb-btn" onclick="handlePDFAction()" data-i18n-title="title_pdf" title="Export PDF"><i
+                        class="fa-solid fa-file-pdf" style="color:var(--red); font-size: 14px;"></i></button>
+            </div>
+        </div>
+
+        <div id="tabbar" id="tour-step-5">
+            <div class="tab active" onclick="switchTab('tab-data')" id="t-data"><i
+                    class="fa-solid fa-database tab-icon"></i> <span data-i18n="tab_data">Basic Input</span></div>
+            <div class="tab" onclick="switchTab('tab-config')" id="t-config"><i
+                    class="fa-solid fa-sliders tab-icon"></i> <span data-i18n="tab_config">Cost Config
+                    (OPEX/CAPEX)</span></div>
+            <div class="tab" onclick="switchTab('tab-results')" id="t-results"><i
+                    class="fa-solid fa-chart-bar tab-icon"></i> <span data-i18n="tab_results">Results &
+                    Feasibility</span><span class="tab-badge hidden-badge" id="badge-results">✓</span></div>
+            <div class="tab" onclick="switchTab('tab-network')" id="t-network"><i
+                    class="fa-solid fa-project-diagram tab-icon"></i> <span data-i18n="tab_network">Optimized
+                    Network</span><span class="tab-badge hidden-badge" id="badge-network">✓</span></div>
+            <div class="tab" onclick="switchTab('tab-curve')" id="t-curve"><i
+                    class="fa-solid fa-chart-area tab-icon"></i> <span data-i18n="tab_curve">Composite Curve</span><span
+                    class="tab-badge hidden-badge" id="badge-curve">✓</span></div>
+            <div class="tab" onclick="switchTab('tab-table')" id="t-table"><i class="fa-solid fa-table tab-icon"></i>
+                <span data-i18n="tab_table">Cascade Table</span><span class="tab-badge hidden-badge"
+                    id="badge-table">✓</span>
+            </div>
+        </div>
+
+        <div id="content-area">
+            <!-- TAB 1: DATA INPUT -->
+            <div class="tab-pane active" id="tab-data">
+                <div class="layout-grid grid-half" style="margin-bottom:16px;">
+                    <div class="panel" id="tour-step-2">
+                        <div class="panel-header">
+                            <span class="panel-title"><i class="fa-solid fa-industry icon"></i> <span
+                                    data-i18n="panel_src">Sources</span></span>
+                            <div class="no-print" style="display:flex; gap:8px;">
+                                <button class="btn-sm excel" onclick="openExcelModal('src')"><i
+                                        class="fa-solid fa-paste"></i> <span data-i18n="btn_excel">Excel</span></button>
+                                <button class="btn-sm add" onclick="addSource()"><i class="fa-solid fa-plus"></i> <span
+                                        data-i18n="btn_add_src">Add Source</span></button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="eng-table" id="sourcesTable">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="th_name">Name</th>
+                                        <th><span data-i18n="th_flow">Flow</span> <span class="flow-unit-label"
+                                                style="font-weight:600; font-size:10px;">(Kgmol/hr)</span></th>
+                                        <th data-i18n="th_imp">Impurity (%)</th>
+                                        <th class="pressure-col" style="display:none; color:var(--accent)"
+                                            data-i18n="th_pres">Pressure (bar)</th>
+                                        <th style="width:40px;" class="no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sourcesBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="panel" id="tour-step-3">
+                        <div class="panel-header">
+                            <span class="panel-title"><i class="fa-solid fa-filter" style="color:var(--orange)"></i>
+                                <span data-i18n="panel_snk">Sinks (Consumers)</span></span>
+                            <div class="no-print" style="display:flex; gap:8px;">
+                                <button class="btn-sm excel" onclick="openExcelModal('snk')"><i
+                                        class="fa-solid fa-paste"></i> <span data-i18n="btn_excel">Excel</span></button>
+                                <button class="btn-sm add" onclick="addSink()"
+                                    style="color:var(--orange); border-color:var(--orange); background: rgba(249,115,22,0.05);"><i
+                                        class="fa-solid fa-plus"></i> <span data-i18n="btn_add_snk">Add
+                                        Sink</span></button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="eng-table" id="sinksTable">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="th_name">Name</th>
+                                        <th><span data-i18n="th_req">Required</span> <span class="flow-unit-label"
+                                                style="font-weight:600; font-size:10px;">(Kgmol/hr)</span></th>
+                                        <th data-i18n="th_max_imp">Max Impurity (%)</th>
+                                        <th class="pressure-col" style="display:none; color:var(--accent)"
+                                            data-i18n="th_pres">Pressure (bar)</th>
+                                        <th style="width:40px;" class="no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sinksBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel no-print" id="tour-step-4">
+                    <div class="panel-body panel-body-run"
+                        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                        <div
+                            style="display:flex; align-items:center; gap:12px; background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            <span class="form-label" style="margin:0; flex-direction: row;">
+                                <span class="info-icon"><i class="fa-solid fa-circle-info"></i><span class="tooltip"
+                                        data-i18n="tt_fresh_imp">Allowed impurity percentage in the external fresh
+                                        hydrogen source.</span></span>
+                                <span data-i18n="lbl_fresh_imp">Fresh H2 Impurity (%):</span>
+                            </span>
+                            <input type="number" min="0" max="100" id="fresh_impurity" value="5.0" step="0.1"
+                                onchange="validateLimits(this,0,100)" class="eng-input"
+                                style="width:90px; direction:ltr; text-align: center; font-size: 15px; font-weight: bold;">
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div class="toggle-row"
+                                style="background: rgba(16,185,129,0.1); border-color: var(--green);">
+                                <input type="checkbox" class="eng-checkbox" id="enable_comparison" checked>
+                                <label for="enable_comparison" style="color: var(--green);"><i
+                                        class="fa-solid fa-code-compare"></i> <span data-i18n="lbl_compare">Compare:
+                                        Membrane vs PSA</span></label>
+                            </div>
+                            <button class="run-btn" id="mainRunBtn" onclick="triggerRunAnalysis()">
+                                <i class="fa-solid fa-calculator"></i> <span data-i18n="btn_run">Run Engineering
+                                    Analysis</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: CONFIG -->
+            <div class="tab-pane" id="tab-config">
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fa-solid fa-gauge-high icon"></i>
+                                <span data-i18n="panel_comp">Pressure Constraints & Compressors</span></span></div>
+                        <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+                            <div class="toggle-row"><input type="checkbox" class="eng-checkbox" id="enable_pressure"
+                                    onchange="togglePressure()"><label for="enable_pressure"
+                                    data-i18n="lbl_en_pres">Enable pressure constraints and calculate compressor
+                                    power</label></div>
+                            <div id="comp_settings_panel"
+                                style="display:none; padding: 16px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px dashed var(--border);">
+                                <div class="layout-grid grid-3">
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_comp_eff">Compressor
+                                            Efficiency (%)</span><input type="number" min="10" max="100" id="comp_eff"
+                                            value="75" onchange="validateLimits(this,10,100)" class="eng-input"
+                                            style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_comp_temp">Inlet
+                                            Temperature (K)</span><input type="number" min="200" max="600"
+                                            id="comp_temp" value="300" onchange="validateLimits(this,200,600)"
+                                            class="eng-input" style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_elec_cost">Electricity
+                                            Cost ($/kWh)</span><input type="number" min="0" step="0.01" id="elec_cost"
+                                            value="0.05" onchange="validateLimits(this,0,10)" class="eng-input"
+                                            style="direction:ltr;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fa-solid fa-recycle"
+                                    style="color:var(--purple)"></i> <span data-i18n="panel_pur">Purification
+                                    Unit</span></span></div>
+                        <div class="panel-body" style="display:flex; flex-direction:column; gap:16px;">
+                            <div class="toggle-row"><input type="checkbox" class="eng-checkbox" id="enable_purifier"
+                                    onchange="togglePurifier()"><label for="enable_purifier"
+                                    data-i18n="lbl_en_pur">Enable purification unit to recover H2 from purge gas</label>
+                            </div>
+                            <div id="purifier_settings"
+                                style="display:none; padding: 16px; background: rgba(0,0,0,0.05); border-radius: 8px; border: 1px dashed var(--border);">
+                                <div class="layout-grid grid-4" style="align-items:end; margin-bottom: 16px;">
+                                    <div class="form-row"><span class="form-label"
+                                            data-i18n="lbl_pur_tech">Technology</span><select id="purifier_type"
+                                            onchange="changePurifierType()" class="eng-select">
+                                            <option value="membrane" data-i18n="opt_mem">Membrane</option>
+                                            <option value="psa" data-i18n="opt_psa">PSA</option>
+                                        </select></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_feed_pres">Feed
+                                            Pressure (bar)</span><input type="number" min="1" id="pur_feed_pres"
+                                            value="100" class="eng-input"
+                                            onchange="changePurifierType(); validateLimits(this,1,null);"
+                                            style="direction:ltr; font-weight:bold;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_feed_flow">Feed
+                                            Flow</span><input type="text" id="pur_feed_flow" value="Auto" readonly
+                                            class="eng-input" style="direction:ltr; color: var(--accent-hi);"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_feed_imp">Feed
+                                            Impurity (%)</span><input type="text" id="pur_feed_imp" value="Auto"
+                                            readonly class="eng-input" style="direction:ltr; color: var(--accent-hi);">
+                                    </div>
+                                </div>
+                                <div class="layout-grid grid-4" style="align-items:end;">
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_prod_imp">Product
+                                            Impurity (%)</span><input type="number" min="0" max="100" id="pur_prod_imp"
+                                            value="2.0" step="0.1" class="eng-input"
+                                            onchange="validateLimits(this,0,100)" readonly style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_prod_pres">Product
+                                            Pressure (bar)</span><input type="number" min="1" id="pur_prod_pres"
+                                            value="30" class="eng-input" onchange="validateLimits(this,1,null)"
+                                            style="direction:ltr; color:var(--green); font-weight:bold;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_tail_imp">Tail Gas
+                                            Impurity (%)</span><input type="number" min="0" max="100" id="pur_tail_imp"
+                                            value="89.11" step="0.01" class="eng-input"
+                                            onchange="validateLimits(this,0,100)" readonly style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_pur_tail_pres">Tail
+                                            Gas Pressure (bar)</span><input type="number" min="1" id="pur_tail_pres"
+                                            value="95" class="eng-input" onchange="validateLimits(this,1,null)"
+                                            style="direction:ltr; color:var(--red); font-weight:bold;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel" style="border-color: rgba(139,92,246,0.3);">
+                        <div class="panel-header" style="background: rgba(139,92,246,0.05);"><span
+                                class="panel-title"><i class="fa-solid fa-sack-dollar" style="color:var(--purple)"></i>
+                                <span data-i18n="panel_capex">Capital Cost (CAPEX) & Maintenance</span></span></div>
+                        <div class="panel-body">
+                            <p style="font-size: 12px; color: var(--text-3); margin-bottom: 16px; line-height: 1.5;"
+                                data-i18n="desc_capex">CAPEX is calculated programmatically using the Six-Tenths Rule.
+                            </p>
+
+                            <div
+                                style="margin-bottom: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,0.02);">
+                                <span class="section-title"
+                                    style="margin-bottom: 12px; font-size: 12px; color: var(--purple);"
+                                    data-i18n="sub_pur">Purification Unit</span>
+                                <div class="layout-grid grid-4">
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_base_cost">Base Cost
+                                            ($)</span><input type="number" min="0" id="capex_pur_base_cost"
+                                            value="2500000" class="eng-input" style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label"><span data-i18n="lbl_base_cap">Base
+                                                Capacity</span> <span class="flow-unit-label"
+                                                style="font-size: 10px;"></span></span><input type="number" min="1"
+                                            id="capex_pur_base_cap" value="1000" class="eng-input"
+                                            style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_scale">Scale Factor
+                                            (n)</span><input type="number" min="0.1" max="1.5" step="0.01"
+                                            id="capex_pur_scale" value="0.85" class="eng-input" style="direction:ltr;">
+                                    </div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_maint">Annual Maint.
+                                            (% OPEX)</span><input type="number" min="0" max="100" step="0.1"
+                                            id="opex_pur_percent" value="8.0" class="eng-input"
+                                            style="direction:ltr; color: var(--yellow); font-weight: bold;"></div>
+                                </div>
+                            </div>
+
+                            <div
+                                style="margin-bottom: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,0.02);">
+                                <span class="section-title"
+                                    style="margin-bottom: 12px; font-size: 12px; color: var(--accent);"
+                                    data-i18n="sub_comp">Compressors</span>
+                                <div class="layout-grid grid-4">
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_base_cost">Base Cost
+                                            ($)</span><input type="number" min="0" id="capex_comp_base_cost"
+                                            value="1500000" class="eng-input" style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_base_kw">Base Power
+                                            (kW)</span><input type="number" min="1" id="capex_comp_base_cap"
+                                            value="1000" class="eng-input" style="direction:ltr;"></div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_scale">Scale Factor
+                                            (n)</span><input type="number" min="0.1" max="1.5" step="0.01"
+                                            id="capex_comp_scale" value="0.65" class="eng-input" style="direction:ltr;">
+                                    </div>
+                                    <div class="form-row"><span class="form-label" data-i18n="lbl_maint">Annual Maint.
+                                            (% OPEX)</span><input type="number" min="0" max="100" step="0.1"
+                                            id="opex_comp_percent" value="4.0" class="eng-input"
+                                            style="direction:ltr; color: var(--yellow); font-weight: bold;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fa-solid fa-dollar-sign"
+                                    style="color:var(--green)"></i> <span data-i18n="panel_opex">Operating Costs
+                                    (OPEX)</span></span></div>
+                        <div class="panel-body">
+                            <div class="layout-grid grid-3">
+                                <div class="form-row"><span class="form-label" data-i18n="lbl_fresh_cost">Fresh H2 Cost
+                                        ($ / unit)</span><input type="number" min="0" id="fresh_h2_cost" value="2.5"
+                                        step="0.1" onchange="validateLimits(this,0,null)" class="eng-input"
+                                        style="direction:ltr; font-weight:bold; color:var(--green);"></div>
+                                <div class="form-row"><span class="form-label" data-i18n="lbl_fuel_val">Purge Fuel Value
+                                        ($ / unit)</span><input type="number" min="0" id="fuel_value" value="0.5"
+                                        step="0.1" onchange="validateLimits(this,0,null)" class="eng-input"
+                                        style="direction:ltr;"></div>
+                                <div class="form-row"><span class="form-label" data-i18n="lbl_op_hrs">Operating Hours
+                                        (hr/yr)</span><input type="number" min="1000" max="8760" id="op_hours"
+                                        value="8000" onchange="validateLimits(this,1000,8760)" class="eng-input"
+                                        style="direction:ltr;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: RESULTS -->
+            <div class="tab-pane" id="tab-results">
+                <div id="results-hint"><i class="fa-solid fa-microchip hint-icon"></i><span class="hint-text"
+                        data-i18n="hint_results">Waiting for engineering engine execution...</span></div>
+                <div id="results-content" style="display:none; flex-direction:column; gap:24px;">
+
+                    <!-- Comparison Section -->
+                    <div id="comparison-section" style="display: none;">
+                        <div class="section-title" style="color: var(--green);"><i class="fa-solid fa-code-compare"></i>
+                            <span data-i18n="sec_comp_eval">Comparative Analysis & Evaluation (Membrane vs PSA)</span>
+                        </div>
+                        <div
+                            style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-x: auto;">
+                            <table class="comparison-table" id="comparisonTable">
+                                <!-- Filled via JS -->
+                            </table>
+                            <div id="recommendationBox" class="recommendation-box">
+                                <!-- Filled via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title"><i class="fa-solid fa-bullseye"></i> <span
+                                data-i18n="sec_targets">Pinch Targets</span> <span id="current-tech-badge"
+                                style="font-size: 11px; background: rgba(59,130,246,0.2); padding: 2px 6px; border-radius: 4px; color: var(--accent-hi); margin-inline-start: 10px;"></span>
+                        </div>
+                        <div class="layout-grid grid-half">
+                            <div class="result-card rc-accent">
+                                <div class="rc-label" data-i18n="rc_fresh">Minimum Fresh Target</div>
+                                <div class="rc-value"><span id="res_fresh">—</span></div>
+                                <div class="rc-unit flow-unit-label">Kgmol/hr</div>
+                            </div>
+                            <div class="result-card rc-red">
+                                <div class="rc-label" data-i18n="rc_purge">Final Purge Gas</div>
+                                <div class="rc-value"><span id="res_purge">—</span></div>
+                                <div class="rc-unit flow-unit-label">Kgmol/hr</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title"><i class="fa-solid fa-chart-pie"></i> <span
+                                data-i18n="sec_feasibility">Feasibility & Cost Summary</span></div>
+                        <div class="layout-grid grid-3" style="margin-bottom: 16px;">
+                            <div class="result-card rc-purple">
+                                <div class="rc-label" data-i18n="rc_capex_pur">CAPEX: Purification Unit</div>
+                                <div class="rc-value" style="font-size:22px;">$ <span id="res_capex_pur">0.00</span>
+                                </div>
+                                <div class="rc-unit" data-i18n="rcu_capex_pur">Cost of Separation Unit</div>
+                            </div>
+                            <div class="result-card rc-purple">
+                                <div class="rc-label" data-i18n="rc_capex_comp">CAPEX: New Compressors</div>
+                                <div class="rc-value" style="font-size:22px;">$ <span id="res_capex_comp">0.00</span>
+                                </div>
+                                <div class="rc-unit" data-i18n="rcu_capex_comp">Cost of Compressors</div>
+                            </div>
+                            <div class="result-card" style="border-color: var(--text-2); background: rgba(0,0,0,0.2);">
+                                <div class="rc-label" data-i18n="rc_capex_total">Total CAPEX</div>
+                                <div class="rc-value" style="font-size:26px; color: var(--text-1);">$ <span
+                                        id="res_capex_total">0.00</span></div>
+                                <div class="rc-unit" data-i18n="rcu_capex_total">Total Capital Investment</div>
+                            </div>
+                        </div>
+                        <div class="layout-grid grid-4">
+                            <div class="result-card">
+                                <div class="rc-label" data-i18n="rc_opex_base">Old Network OPEX</div>
+                                <div class="rc-value" style="font-size:20px; color:var(--text-2);">$ <span
+                                        id="res_base_opex">—</span></div>
+                                <div class="rc-unit">/<span class="time-basis-lbl">hr</span> <span
+                                        data-i18n="rcu_mat_cost">(Material Cost)</span></div>
+                            </div>
+                            <div class="result-card rc-accent">
+                                <div class="rc-label"><span data-i18n="rc_opex_new">New Network OPEX</span> <span
+                                        class="info-icon"><i class="fa-solid fa-circle-info"></i><span class="tooltip"
+                                            data-i18n="tt_opex_new">Includes: Cost of Fresh H2 - Fuel value of Purge +
+                                            Compressor power + Annual maintenance for new equipment.</span></span></div>
+                                <div class="rc-value" style="font-size:20px;">$ <span id="res_final_h2_opex">—</span>
+                                </div>
+                                <div class="rc-unit">/<span class="time-basis-lbl">hr</span> <span
+                                        data-i18n="rcu_inc_maint">(Inc. Maint & Elec)</span></div>
+                            </div>
+                            <div class="result-card" id="card_save_hr">
+                                <div class="rc-label" data-i18n="rc_savings">Net OPEX Savings</div>
+                                <div class="rc-value" style="font-size: 22px;"><span
+                                        id="res_save_hr_sign">+$</span><span id="res_save_hr">—</span> <span
+                                        style="font-size: 12px; color:var(--text-3);">/<span
+                                            class="time-basis-lbl">hr</span></span></div>
+                                <div class="rc-unit"
+                                    style="font-size:13px; font-weight:800; color:var(--text-1); opacity:0.8;"><span
+                                        data-i18n="rcu_yearly">Yearly:</span> <span id="res_save_yr_sign"></span>$<span
+                                        id="res_save_yr">—</span></div>
+                            </div>
+                            <div class="result-card" id="card_payback"
+                                style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.2)); border-color: var(--green);">
+                                <div class="rc-label" data-i18n="rc_payback">Payback Period</div>
+                                <div class="rc-value" style="font-size: 28px; color: var(--green);"><span
+                                        id="res_payback">—</span></div>
+                                <div class="rc-unit" data-i18n="rcu_years">Years</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: NETWORK -->
+            <div class="tab-pane" id="tab-network">
+                <div id="network-hint"><i class="fa-solid fa-project-diagram hint-icon"></i><span class="hint-text"
+                        data-i18n="hint_network">Network diagram currently unavailable.</span></div>
+                <div id="network-content" style="display:none;">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title"><i class="fa-solid fa-project-diagram icon"></i> <span
+                                    data-i18n="panel_net_diag">Interactive Network Diagram</span></span>
+                            <div style="display:flex; gap:8px;"><button class="btn-sm" onclick="zoomNetwork(0.2)"
+                                    data-i18n-title="btn_zoom_in" title="Zoom In"><i
+                                        class="fa-solid fa-magnifying-glass-plus"></i></button><button class="btn-sm"
+                                    onclick="zoomNetwork(-0.2)" data-i18n-title="btn_zoom_out" title="Zoom Out"><i
+                                        class="fa-solid fa-magnifying-glass-minus"></i></button><button class="btn-sm"
+                                    onclick="fitNetwork()" data-i18n-title="btn_fit" title="Fit to Screen"><i
+                                        class="fa-solid fa-expand"></i></button>
+                                <div class="tb-sep" style="height: 18px; margin-top:4px;"></div><button
+                                    class="btn-sm excel"
+                                    onclick="exportCanvasAsPNG('#mynetwork canvas', 'Network_Diagram.png')"><i
+                                        class="fa-solid fa-image"></i> <span data-i18n="btn_save_img">Save
+                                        Image</span></button>
+                            </div>
+                        </div>
+                        <div class="panel-body" style="padding:0;">
+                            <div id="mynetwork"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: CURVE -->
+            <div class="tab-pane" id="tab-curve">
+                <div id="curve-hint"><i class="fa-solid fa-chart-area hint-icon"></i><span class="hint-text"
+                        data-i18n="hint_curve">Composite Curve pending...</span></div>
+                <div id="curve-content" style="display:none;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fa-solid fa-chart-area icon"></i>
+                                <span data-i18n="panel_curve">Composite Curve</span></span><button class="btn-sm excel"
+                                onclick="exportCanvasAsPNG('#pinchChart', 'Composite_Curve.png')"><i
+                                    class="fa-solid fa-image"></i> <span data-i18n="btn_save_img">Save
+                                    Image</span></button></div>
+                        <div class="panel-body">
+                            <div
+                                style="height:60vh; min-height:400px; position:relative; background:var(--bg-app); border-radius:8px; padding:12px; border: 1px solid var(--border); transition: background-color 0.3s ease;">
+                                <canvas id="pinchChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: TABLE -->
+            <div class="tab-pane" id="tab-table">
+                <div id="table-hint"><i class="fa-solid fa-table hint-icon"></i><span class="hint-text"
+                        data-i18n="hint_table">Cascade Table unavailable.</span></div>
+                <div id="table-content" style="display:none;">
+                    <div class="panel">
+                        <div class="panel-header"><span class="panel-title"><i class="fa-solid fa-table icon"></i> <span
+                                    data-i18n="panel_cascade">Problem Table Algorithm</span></span></div>
+                        <div class="table-responsive">
+                            <table class="eng-table" id="cascadeTable" style="text-align:center;">
+                                <thead>
+                                    <tr>
+                                        <th>K</th>
+                                        <th>Ck (%)</th>
+                                        <th>Fsk</th>
+                                        <th>Fsr</th>
+                                        <th>Fsr − Fsk</th>
+                                        <th>Fc.k</th>
+                                        <th>m</th>
+                                        <th>cum m</th>
+                                        <th style="color:var(--yellow)">Ff.k</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cascadeBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="statusbar">
+            <div style="display:flex; gap:16px; align-items:center;">
+                <div class="status-item">
+                    <div class="status-dot"></div> <span class="hide-mobile" data-i18n="status_ready">System
+                        Ready</span>
+                </div>
+                <div class="status-item"><i class="fa-solid fa-industry" style="opacity:.6; font-size:10px;"></i> <span
+                        id="status-src">0 Sources</span></div>
+                <div class="status-item"><i class="fa-solid fa-filter" style="opacity:.6; font-size:10px;"></i> <span
+                        id="status-snk">0 Sinks</span></div>
+            </div>
+
+            <div
+                style="display:flex; align-items:center; gap:6px; font-weight:700; color:var(--text-2); letter-spacing: 0.5px; font-size: 12px;">
+                <i class="fa-solid fa-seedling" style="color:var(--green); animation: pulse 2s infinite;"></i>
+                <span>Developed by <span style="color:var(--accent-hi)">Free Palastene Team</span> © 2026</span>
+            </div>
+
+            <div style="display:flex; gap:16px; align-items:center;">
+                <span id="status-unit"
+                    style="color:var(--accent); font-weight:800; background:rgba(59,130,246,0.1); padding: 2px 8px; border-radius: 4px;">Kgmol/hr</span>
+                <span class="hide-mobile">H2 Pinch PRO Engine v3.6</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-container"></div>
+
+
+    <script src="script.js"></script>
+</body>
+
+</html>
